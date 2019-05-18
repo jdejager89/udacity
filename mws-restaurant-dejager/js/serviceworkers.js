@@ -1,74 +1,72 @@
-const mainCache = "restaurant-reviews-v1";
+/*
+ service_worker.js
+ Employs a service worker to cache pages for the Restaurant Reviews App
+ Author: Steve Prager
+*/
 
-self.addEventListener('install', (evt) => {
-    //installation will finish only after all files are cached
-    evt.waitUntil(
-        caches.open(mainCache).then((cache) => {
-            //store a reference of cache in currentCache property
-            //to use it later to add content to cache
-            self.currentCache = cache;
-            //add to cache the basic files of the page
-            return cache.addAll([
-                'index.html',
-                'restaurant.html',
-                'css/styles.css',
-                'css/styles-rest.css',
-                'css/media.css',
-                'css/media-rest.css',
-                'js/dbhelper.js',
-                'js/main.js',
-                'js/restaurant_info.js',
-                'data/restaurants.json',
-                'img/1.jpg',
-                'img/2.jpg',
-                'img/3.jpg',
-                'img/4.jpg',
-                'img/5.jpg',
-                'img/6.jpg',
-                'img/7.jpg',
-                'img/8.jpg',
-                'img/9.jpg',
-                'img/rest.jpg'
-            ]);
-        }).catch((err) => {
-            console.log("error in load files in cache", err);
-        })
-    );
+const currentCacheName = 'restaurant-reviews-app-v2';
+
+// Once install phase complete, add all URLs to the cache
+self.addEventListener('install', function(event) {
+  // console.log('service worker installing');
+
+  const cacheURLs = [
+    '/',
+    '/index.html',
+    '/restaurant.html',
+    '/css/styles.css',
+    '/css/responsive-index.css',
+    '/css/responsive-rest.css',
+    '/js/dbhelper.js',
+    '/js/main.js',
+    '/js/restaurant_info.js',
+    '/data/restaurants.json',
+    '/img/1.jpg',
+    '/img/2.jpg',
+    '/img/3.jpg',
+    '/img/4.jpg',
+    '/img/5.jpg',
+    '/img/6.jpg',
+    '/img/7.jpg',
+    '/img/8.jpg',
+    '/img/9.jpg',
+    '/img/10.jpg'
+  ];
+
+  event.waitUntil(
+    caches.open(currentCacheName).then(function(cache) {
+      // console.log('cache time');
+      return cache.addAll(cacheURLs);
+    })
+  );
 });
 
-//fetch files from cache or network
-self.addEventListener('fetch', (evt) => {
 
-    evt.respondWith(
-        //check first if requested files are already in cache
-        caches.match(evt.request).then((response) => {
+// Respond to fetch requests with a page from the cache.
+// If there's nothing in the cache, go to the network
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.match(event.request).then(function(response) {
+      if (response) {
+        return response;
+      }
+      return fetch(event.request);
+    })
+  );
+});
 
-            if (response) {
-                //if files are find in cache return
-                return response;
-            } else {
-                //if files are not found in cache request them from the network
-                return fetch(evt.request).then((response) => {
-                    return response;
-                }).catch((err) => {
-                    console.log('Fetching failed', err);
-                });
-            }
-        })
-    );
-
-    //save to cache files that were not placed there during service worker installation
-    //this is mainly for map files. When user visits a restaurant page, images of the map
-    //are stored in cache memory. When user uses the app offline will now have access to
-    //map images for restaurant pages he visited in the past using network connection.
-    caches.match(evt.request).then((response) => {
-        if (!response) {
-            //if response is not found in cache get if again from network and save it in cache
-            fetch(evt.request).then((response) => {
-                //do this by using the reference to current cache property
-                self.currentCache.put(evt.request, response);
-            });
-        }
-    });
-
+// Delete old caches upon activation of a new SW if there is a new one specified
+self.addEventListener('activate', function(event) {
+	event.waitUntil(
+		caches.keys().then(function(cacheNames) {
+			return Promise.all(
+				cacheNames.filter(function(cacheName) {
+					return cacheName.startsWith('restaurant-reviews-app') && cacheName != currentCacheName;
+				}).map(function(cacheName) {
+					return caches.delete(cacheName);
+				})
+			);
+		})
+	);
+	// console.log('cache deleted');
 });
